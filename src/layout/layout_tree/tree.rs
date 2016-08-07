@@ -487,7 +487,21 @@ impl LayoutTree {
                                     cur_index as i32 + 1
                                 },
                                 Direction::Left | Direction::Up => {
-                                    cur_index as i32 - 1
+                                    let next_ix = siblings_and_self[cur_index];
+                                    match self.tree[next_ix] {
+                                        Container::View { .. } | Container::Container { .. } => {
+                                            let parent_ix = try!(self.tree.place_node_at(active_ix, next_ix)
+                                                 .map_err(|err| TreeError::PetGraphError(err)));
+                                            if let Some(handle) = self.tree[node_ix].get_handle() {
+                                                match handle {
+                                                    Handle::View(view) => self.normalize_view(view),
+                                                    _ => unreachable!()
+                                                }
+                                            }
+                                            return Ok(parent_ix)
+                                        }
+                                        _ => unreachable!()
+                                    }
                                 }
                             };
                             // both this and the view branch down below look similar
@@ -515,7 +529,7 @@ impl LayoutTree {
                             match self.tree[next_ix] {
                                 Container::View { .. } => {
                                     // NOTE need to add, make this edge weight the active container's
-                                    let _parent_ix = try!(self.tree.place_node_at(active_ix, next_ix)
+                                    let parent_ix = try!(self.tree.place_node_at(active_ix, next_ix)
                                                          .map_err(|err| TreeError::PetGraphError(err)));
                                     if let Some(handle) = self.tree[node_ix].get_handle() {
                                         match handle {
@@ -523,6 +537,7 @@ impl LayoutTree {
                                             _ => unreachable!()
                                         }
                                     }
+                                    return Ok(parent_ix);
                                 },
                                 Container::Container { .. } => {
                                     // normalize index for removal of view container
